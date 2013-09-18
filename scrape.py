@@ -19,13 +19,22 @@ class Project(object):
     def __repr__(self):
         return '<Project: %s>' % self.name
 
-    def download(self, path=None):
-        if path is None:
-            path = self.name
-        response = requests.get(self.download_url)
-        archive = zipfile.ZipFile(cStringIO.StringIO(response.content))
-        archive.extractall(path)
-
+    # The way downloads work on MatlabCentral is that the download link
+    # redirects you to the url of the actual file you're downloading.
+    # Instead of following the redirect automatically, we manually get
+    # the value of the Location: header; this lets us get at the name of
+    # the downloaded file (and so we can tell whether it's a zip, etc.)
+    def download(self, path, extract_archives=True):
+        response = requests.head(self.download_url, allow_redirects=False)
+        real_download_url = response.headers['Location']
+        download_filename = real_download_url.split('/')[-1]
+        response = requests.get(real_download_url)
+        if extract_archives and download_filename.endswith('.zip'):
+            archive = zipfile.ZipFile(cStringIO.StringIO(response.content))
+            archive.extractall(path)
+        else:
+            with open(os.path.join(path, download_filename), 'w') as f:
+                f.write(response.text)
 
 def fetch_projects_from_fileindex(start_page=1, pages=10):
     for page in xrange(start_page, start_page + pages):
@@ -43,6 +52,8 @@ def parse_args():
         help='List found projects, without downloading.')
     parser.add_argument('--pages', default=1, type=int,
         help='Number of fileindex pages to crawl.')
+    parser.add_argument('--extract_archives', type=bool, default=True,
+        help='If true, automatically extract archives.')
     parser.add_argument('--to', default='',
         help='Directory to download projects to (default current).')
     return parser.parse_args()
@@ -53,6 +64,7 @@ if __name__ == '__main__':
         print 'Found %s.' % project.name
         if not args.dry_run:
             download_path = os.path.join(args.to, project.name)
+            os.makedirs(download_path)
             print 'Downloading to %s...' % download_path,
-            project.download(download_path)
+            project.download(download_path, extract_archives=args.extract_archives)
             print 'done.'
