@@ -7,7 +7,6 @@ import bs4
 import requests
 
 BASE_URL = 'http://www.mathworks.com/matlabcentral/fileexchange'
-INDEX_URL = BASE_URL + '/index'
 
 
 class Project(object):
@@ -36,6 +35,7 @@ class Project(object):
             with open(os.path.join(path, download_filename), 'w') as f:
                 f.write(response.text)
 
+
 def fetch_projects_from_fileindex(start_page=1, pages=10):
     for page in xrange(start_page, start_page + pages):
         params = dict(page=page, term='type:Function', sort='downloads_desc')
@@ -48,13 +48,17 @@ def fetch_projects_from_fileindex(start_page=1, pages=10):
 def parse_args():
     parser = argparse.ArgumentParser(
         description='download files from MatlabCentral')
-    parser.add_argument('--dry_run', action='store_true',
+    parser.add_argument(
+        '--dry_run', action='store_true',
         help='List found projects, without downloading.')
-    parser.add_argument('--pages', default=1, type=int,
+    parser.add_argument(
+        '--pages', default=1, type=int,
         help='Number of fileindex pages to crawl.')
-    parser.add_argument('--extract_archives', type=bool, default=True,
+    parser.add_argument(
+        '--extract_archives', type=bool, default=True,
         help='If true, automatically extract archives.')
-    parser.add_argument('--to', default='',
+    parser.add_argument(
+        '--to', default='',
         help='Directory to download projects to (default current).')
     return parser.parse_args()
 
@@ -66,5 +70,5 @@ if __name__ == '__main__':
             download_path = os.path.join(args.to, project.name)
             os.makedirs(download_path)
             print 'Downloading to %s...' % download_path,
-            project.download(download_path, extract_archives=args.extract_archives)
+            project.download(download_path, args.extract_archives)
             print 'done.'
