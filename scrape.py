@@ -19,7 +19,6 @@ def get_soup(*args, **kwargs):
 class Project(object):
     def __init__(self, url):
         self.url = url
-        self.download_url = '%s?download=true' % self.url
         self.name = url.split('/')[-1]
 
         self.tag_regex = re.compile(r'([\w\s]+)(?:\(\d+\))?')
@@ -33,7 +32,8 @@ class Project(object):
     # the value of the Location: header; this lets us get at the name of
     # the downloaded file (and so we can tell whether it's a zip, etc.)
     def download(self, path, extract_archives=True):
-        response = requests.head(self.download_url, allow_redirects=False)
+        download_url = '%s?download=true' % self.url
+        response = requests.head(download_url, allow_redirects=False)
         real_download_url = response.headers['Location']
         download_filename = real_download_url.split('/')[-1]
         response = requests.get(real_download_url)
