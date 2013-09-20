@@ -10,6 +10,7 @@ import bs4
 import requests
 
 BASE_URL = 'http://www.mathworks.com/matlabcentral/fileexchange'
+TAG_REGEX = re.compile(r'([\w\s]+)(?:\(\d+\))?')
 
 
 def get_soup(*args, **kwargs):
@@ -20,8 +21,6 @@ class Project(object):
     def __init__(self, url):
         self.url = url
         self.name = url.split('/')[-1]
-
-        self.tag_regex = re.compile(r'([\w\s]+)(?:\(\d+\))?')
 
     def __repr__(self):
         return '<Project: %s>' % self.name
@@ -50,7 +49,7 @@ class Project(object):
         raw_tags = tags_div.get_text().strip().split('\n\n')[0].split(', ')
         tags = []
         for tag in raw_tags:
-            match = self.tag_regex.match(tag)
+            match = TAG_REGEX.match(tag)
             if match:
                 tags.append(match.group(1))
         return tags
