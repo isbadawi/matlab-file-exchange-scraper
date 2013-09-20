@@ -1,6 +1,7 @@
 import argparse
 import cStringIO
 import itertools
+import json
 import os
 import re
 import zipfile
@@ -54,6 +55,9 @@ class Project(object):
                 tags.append(match.group(1))
         return tags
 
+    def get_json(self):
+        return dict(name=self.name, url=self.url, tags=self.get_tags())
+
 
 def fileindex_projects():
     for page in itertools.count():
@@ -79,9 +83,13 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
+    projects = []
     for project in itertools.islice(fileindex_projects(), args.num_projects):
         download_path = os.path.join(args.to, project.name)
         os.makedirs(download_path)
         print 'Downloading %s to %s...' % (project.name, download_path),
         project.download(download_path, args.extract_archives)
         print 'done.'
+        projects.append(project.get_json())
+    with open(os.path.join(args.to, 'manifest.json'), 'w') as f:
+        json.dump({'projects': projects}, f, indent=2)
