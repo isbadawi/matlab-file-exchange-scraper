@@ -60,7 +60,7 @@ class Project(object):
 
 
 def fileindex_projects():
-    for page in itertools.count():
+    for page in itertools.count(1):
         params = dict(page=page, term='type:Function', sort='downloads_desc')
         soup = get_soup(BASE_URL, params=params)
         for title in soup.find_all('p', attrs={'class': 'file_title'}):
