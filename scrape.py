@@ -2,6 +2,7 @@ import argparse
 import cStringIO
 import itertools
 import os
+import re
 import zipfile
 
 import bs4
@@ -19,6 +20,8 @@ class Project(object):
         self.url = url
         self.download_url = '%s?download=true' % self.url
         self.name = url.split('/')[-1]
+
+        self.tag_regex = re.compile(r'([\w\s]+)(?:\(\d+\))?')
 
     def __repr__(self):
         return '<Project: %s>' % self.name
@@ -39,6 +42,17 @@ class Project(object):
         else:
             with open(os.path.join(path, download_filename), 'w') as f:
                 f.write(response.text)
+
+    def get_tags(self):
+        soup = get_soup(self.url)
+        tags_div = soup.find('div', id='all_tags')
+        raw_tags = tags_div.get_text().strip().split('\n\n')[0].split(', ')
+        tags = []
+        for tag in raw_tags:
+            match = self.tag_regex.match(tag)
+            if match:
+                tags.append(match.group(1))
+        return tags
 
 
 def fileindex_projects():
