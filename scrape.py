@@ -1,5 +1,6 @@
 import argparse
 import cStringIO
+import itertools
 import os
 import zipfile
 
@@ -7,6 +8,10 @@ import bs4
 import requests
 
 BASE_URL = 'http://www.mathworks.com/matlabcentral/fileexchange'
+
+
+def get_soup(*args, **kwargs):
+    return bs4.BeautifulSoup(requests.get(*args, **kwargs).text)
 
 
 class Project(object):
@@ -36,11 +41,10 @@ class Project(object):
                 f.write(response.text)
 
 
-def fetch_projects_from_fileindex(start_page=1, pages=10):
-    for page in xrange(start_page, start_page + pages):
+def fileindex_projects():
+    for page in itertools.count():
         params = dict(page=page, term='type:Function', sort='downloads_desc')
-        page_html = requests.get(BASE_URL, params=params).text
-        soup = bs4.BeautifulSoup(page_html)
+        soup = get_soup(BASE_URL, params=params)
         for title in soup.find_all('p', attrs={'class': 'file_title'}):
             yield Project(title.a['href'])
 
@@ -49,11 +53,8 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='download files from MatlabCentral')
     parser.add_argument(
-        '--dry_run', action='store_true',
-        help='List found projects, without downloading.')
-    parser.add_argument(
-        '--pages', default=1, type=int,
-        help='Number of fileindex pages to crawl.')
+        '--num_projects', default=10, type=int,
+        help='Number of projects to fetch.')
     parser.add_argument(
         '--extract_archives', type=bool, default=True,
         help='If true, automatically extract archives.')
@@ -64,11 +65,9 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    for project in fetch_projects_from_fileindex(pages=args.pages):
-        print 'Found %s.' % project.name
-        if not args.dry_run:
-            download_path = os.path.join(args.to, project.name)
-            os.makedirs(download_path)
-            print 'Downloading to %s...' % download_path,
-            project.download(download_path, args.extract_archives)
-            print 'done.'
+    for project in itertools.islice(fileindex_projects(), args.num_projects):
+        download_path = os.path.join(args.to, project.name)
+        os.makedirs(download_path)
+        print 'Downloading %s to %s...' % (project.name, download_path),
+        project.download(download_path, args.extract_archives)
+        print 'done.'
