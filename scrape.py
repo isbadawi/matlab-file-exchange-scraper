@@ -81,7 +81,8 @@ def parse_args():
         help='Directory to download projects to (default current).')
     return parser.parse_args()
 
-if __name__ == '__main__':
+
+def main():
     args = parse_args()
     projects = []
     for project in itertools.islice(fileindex_projects(), args.num_projects):
@@ -93,3 +94,6 @@ if __name__ == '__main__':
         projects.append(project.get_json())
     with open(os.path.join(args.to, 'manifest.json'), 'w') as f:
         json.dump({'projects': projects}, f, indent=2)
+
+if __name__ == '__main__':
+    main()
