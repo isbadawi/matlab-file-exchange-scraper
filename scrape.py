@@ -4,6 +4,7 @@ import itertools
 import json
 import os
 import re
+import sys
 import zipfile
 
 import bs4
@@ -98,6 +99,7 @@ def main():
         download_path = os.path.join(args.to, project.name)
         os.makedirs(download_path)
         print 'Downloading %s to %s...' % (project.name, download_path),
+        sys.stdout.flush()
         project.download(download_path, args.extract_archives)
         print 'done.'
         projects.append(project.get_json())
