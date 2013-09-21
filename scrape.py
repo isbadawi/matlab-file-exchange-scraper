@@ -98,7 +98,7 @@ def main():
     for project in fileindex_projects(args.num_projects, args.sort):
         download_path = os.path.join(args.to, project.name)
         os.makedirs(download_path)
-        print 'Downloading %s to %s...' % (project.name, download_path),
+        print 'Downloading %s...' % project.name,
         sys.stdout.flush()
         project.download(download_path, args.extract_archives)
         print 'done.'
