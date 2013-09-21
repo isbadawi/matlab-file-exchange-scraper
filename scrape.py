@@ -58,12 +58,14 @@ class Project(object):
         return dict(name=self.name, url=self.url, tags=self.get_tags())
 
 
-def fileindex_projects():
-    for page in itertools.count(1):
-        params = dict(page=page, term='type:Function', sort='downloads_desc')
-        soup = get_soup(BASE_URL, params=params)
-        for title in soup.find_all('p', attrs={'class': 'file_title'}):
-            yield Project(title.a['href'])
+def fileindex_projects(num_projects, sort):
+    def helper():
+        for page in itertools.count(1):
+            params = dict(page=page, term='type:Function', sort=sort)
+            soup = get_soup(BASE_URL, params=params)
+            for title in soup.find_all('p', attrs={'class': 'file_title'}):
+                yield Project(title.a['href'])
+    return itertools.islice(helper(), num_projects)
 
 
 def parse_args():
@@ -75,6 +77,14 @@ def parse_args():
     parser.add_argument(
         '--extract_archives', type=bool, default=True,
         help='If true, automatically extract archives.')
+    SORT_CHOICES = ('downloads_desc', 'downloads_asc',
+                    'date_desc_updated', 'date_asc_updated',
+                    'date_desc_submitted', 'date_asc_submitted',
+                    'comments_desc', 'comments_asc',
+                    'ratings_desc', 'ratings_asc')
+    parser.add_argument(
+        '--sort', choices=SORT_CHOICES, default='downloads_desc',
+        help='Sorting criteria.')
     parser.add_argument(
         '--to', default='',
         help='Directory to download projects to (default current).')
@@ -84,7 +94,7 @@ def parse_args():
 def main():
     args = parse_args()
     projects = []
-    for project in itertools.islice(fileindex_projects(), args.num_projects):
+    for project in fileindex_projects(args.num_projects, args.sort):
         download_path = os.path.join(args.to, project.name)
         os.makedirs(download_path)
         print 'Downloading %s to %s...' % (project.name, download_path),
