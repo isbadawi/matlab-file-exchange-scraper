@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 import cStringIO
 import itertools
 import json
@@ -92,16 +93,22 @@ def parse_args():
     return parser.parse_args()
 
 
+@contextlib.contextmanager
+def status(message):
+    print '%s...' % message,
+    sys.stdout.flush()
+    yield
+    print 'done.'
+
+
 def main():
     args = parse_args()
     projects = []
     for project in fileindex_projects(args.num_projects, args.sort):
         download_path = os.path.join(args.to, project.name)
         os.makedirs(download_path)
-        print 'Downloading %s...' % project.name,
-        sys.stdout.flush()
-        project.download(download_path, args.extract_archives)
-        print 'done.'
+        with status('Downloading %s' % project.name):
+            project.download(download_path, args.extract_archives)
         projects.append(project.get_json())
     with open(os.path.join(args.to, 'manifest.json'), 'w') as f:
         json.dump({'projects': projects}, f, indent=2)
