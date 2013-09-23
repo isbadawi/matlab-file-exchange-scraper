@@ -20,12 +20,18 @@ def get_soup(*args, **kwargs):
 
 
 class Project(object):
-    def __init__(self, url):
-        self.url = url
-        self.name = url.split('/')[-1]
+    def __init__(self, url_or_name):
+        if url_or_name.startswith(BASE_URL):
+            self.url = url_or_name
+        else:
+            self.url = '%s/%s' % (BASE_URL, url_or_name)
 
     def __repr__(self):
         return '<Project: %s>' % self.name
+
+    @property
+    def name(self):
+        return self.url.split('/')[-1]
 
     # The way downloads work on MatlabCentral is that the download link
     # redirects you to the url of the actual file you're downloading.
