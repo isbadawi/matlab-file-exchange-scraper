@@ -51,8 +51,10 @@ class Project(object):
             with open(os.path.join(path, download_filename), 'w') as f:
                 f.write(response.text.encode('utf-8'))
 
-    def get_tags(self):
+    def get_metadata(self):
+        metadata = {}
         soup = get_soup(self.url)
+
         tags_div = soup.find('div', id='all_tags')
         raw_tags = tags_div.get_text().strip().split('\n\n')[0].split(', ')
         tags = []
@@ -60,10 +62,26 @@ class Project(object):
             match = TAG_REGEX.match(tag)
             if match:
                 tags.append(match.group(1))
-        return tags
+        metadata['tags'] = tags
+
+        details = soup.find('div', id='details')
+
+        metadata['title'] = details.h1.text
+        metadata['summary'] = details.find('p', id='summary').text
+
+        author_link = details.find('p', id='author').a
+        metadata['author'] = author_link.text
+        metadata['author_url'] = author_link['href']
+        metadata['date_submitted'] = details.find(
+            'span', id='submissiondate').text.strip()
+        metadata['date_updated'] = details.find(
+            'span', id='date_updated').text[len('(Updated '):-1]
+        return metadata
 
     def get_json(self):
-        return dict(name=self.name, url=self.url, tags=self.get_tags())
+        data = dict(name=self.name, url=self.url)
+        data.update(self.get_metadata())
+        return data
 
 
 def fileindex_projects(num_projects, sort):
@@ -117,7 +135,7 @@ def main():
             project.download(download_path, args.extract_archives)
         projects.append(project.get_json())
     with open(os.path.join(args.to, 'manifest.json'), 'w') as f:
-        json.dump({'projects': projects}, f, indent=2)
+        json.dump({'projects': projects}, f, indent=2, sort_keys=True)
 
 if __name__ == '__main__':
     main()
