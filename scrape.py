@@ -43,7 +43,7 @@ class Project(object):
             archive.extractall(path)
         else:
             with open(os.path.join(path, download_filename), 'w') as f:
-                f.write(response.text)
+                f.write(response.text.encode('utf-8'))
 
     def get_tags(self):
         soup = get_soup(self.url)
