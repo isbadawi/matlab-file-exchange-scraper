@@ -106,9 +106,7 @@ class Project(object):
         return metadata
 
     def get_json(self):
-        data = dict(name=self.name, url=self.url)
-        data.update(self.get_metadata())
-        return data
+        return dict(name=self.name, url=self.url, **self.get_metadata())
 
 
 def fileindex_projects(num_projects, sort):
