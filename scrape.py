@@ -1,10 +1,12 @@
 import argparse
 import contextlib
 import cStringIO
+import errno
 import itertools
 import json
 import os
 import re
+import shutil
 import sys
 import zipfile
 
@@ -17,6 +19,29 @@ TAG_REGEX = re.compile(r'([\w\s]+)(?:\(\d+\))?')
 
 def get_soup(*args, **kwargs):
     return bs4.BeautifulSoup(requests.get(*args, **kwargs).text)
+
+
+# From http://stackoverflow.com/a/600612/281108
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as e:
+        if e.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
+
+
+def extractall(archive, path):
+    "A version of ZipFile.extractall that doesn't choke on utf-8 filenames."
+    for filename in archive.namelist():
+        dest_filename = os.path.join(path, filename.decode('cp437'))
+        if dest_filename.endswith('/'):
+            mkdir_p(dest_filename)
+            continue
+        mkdir_p(os.path.dirname(dest_filename))
+        with archive.open(filename) as src, open(dest_filename, 'w') as dest:
+            shutil.copyfileobj(src, dest)
 
 
 class Project(object):
@@ -38,15 +63,15 @@ class Project(object):
     # Instead of following the redirect automatically, we manually get
     # the value of the Location: header; this lets us get at the name of
     # the downloaded file (and so we can tell whether it's a zip, etc.)
-    def download(self, path, extract_archives=True):
+    def download(self, path='.', extract_archives=True):
         download_url = '%s?download=true' % self.url
         response = requests.head(download_url, allow_redirects=False)
         real_download_url = response.headers['Location']
         download_filename = real_download_url.split('/')[-1]
         response = requests.get(real_download_url)
         if extract_archives and download_filename.endswith('.zip'):
-            archive = zipfile.ZipFile(cStringIO.StringIO(response.content))
-            archive.extractall(path)
+            with zipfile.ZipFile(cStringIO.StringIO(response.content)) as f:
+                extractall(f, path)
         else:
             with open(os.path.join(path, download_filename), 'w') as f:
                 f.write(response.text.encode('utf-8'))
