@@ -58,17 +58,10 @@ class Project(object):
     def name(self):
         return self.url.split('/')[-1]
 
-    # The way downloads work on MatlabCentral is that the download link
-    # redirects you to the url of the actual file you're downloading.
-    # Instead of following the redirect automatically, we manually get
-    # the value of the Location: header; this lets us get at the name of
-    # the downloaded file (and so we can tell whether it's a zip, etc.)
     def download(self, path='.', extract_archives=True):
         download_url = '%s?download=true' % self.url
-        response = requests.head(download_url, allow_redirects=False)
-        real_download_url = response.headers['Location']
-        download_filename = real_download_url.split('/')[-1]
-        response = requests.get(real_download_url)
+        response = requests.get(download_url)
+        download_filename = response.url.split('/')[-1]
         if extract_archives and download_filename.endswith('.zip'):
             with zipfile.ZipFile(cStringIO.StringIO(response.content)) as f:
                 extractall(f, path)
