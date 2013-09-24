@@ -72,10 +72,12 @@ class Project(object):
         author_link = details.find('p', id='author').a
         metadata['author'] = author_link.text
         metadata['author_url'] = author_link['href']
+
         metadata['date_submitted'] = details.find(
             'span', id='submissiondate').text.strip()
-        metadata['date_updated'] = details.find(
-            'span', id='date_updated').text[len('(Updated '):-1]
+        date_span = details.find('span', id='date_updated')
+        if date_span is not None:
+            metadata['date_updated'] = date_span.text[len('(Updated '):-1]
         return metadata
 
     def get_json(self):
