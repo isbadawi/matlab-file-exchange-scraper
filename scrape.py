@@ -61,11 +61,15 @@ class Project(object):
         response = requests.get(download_url)
         download_filename = response.url.split('/')[-1]
         if extract_archives and download_filename.endswith('.zip'):
-            with zipfile.ZipFile(cStringIO.StringIO(response.content)) as f:
-                extractall(f, path)
+            try:
+                with zipfile.ZipFile(cStringIO.StringIO(response.content)) as f:
+                    extractall(f, path)
+            except zipfile.BadZipFile:
+                return False
         else:
             with open(os.path.join(path, download_filename), 'w') as f:
                 f.write(response.text.encode('utf-8'))
+        return True
 
     def get_metadata(self):
         metadata = {}
@@ -149,8 +153,8 @@ def main():
         download_path = os.path.join(args.to, project.name)
         os.makedirs(download_path)
         with status('Downloading %s' % project.name):
-            project.download(download_path, args.extract_archives)
-        projects.append(project.get_json())
+            if project.download(download_path, args.extract_archives):
+                projects.append(project.get_json())
     with open(os.path.join(args.to, 'manifest.json'), 'w') as f:
         json.dump({'projects': projects}, f, indent=2, sort_keys=True)
 
