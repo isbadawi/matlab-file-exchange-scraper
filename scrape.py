@@ -1,5 +1,4 @@
 import argparse
-import contextlib
 import cStringIO
 import errno
 import itertools
@@ -17,8 +16,15 @@ BASE_URL = 'http://www.mathworks.com/matlabcentral/fileexchange'
 TAG_REGEX = re.compile(r'([\w\s]+)(?:\(\d+\))?')
 
 
-def get_soup(*args, **kwargs):
-    return bs4.BeautifulSoup(requests.get(*args, **kwargs).text)
+def http_get(*args, **kwargs):
+    if 'timeout' not in kwargs:
+        kwargs['timeout'] = 5
+    try:
+        return requests.get(*args, **kwargs)
+    except requests.exceptions.ConnectionError:
+        return None
+    except requests.exceptions.Timeout:
+        return None
 
 
 # From http://stackoverflow.com/a/600612/281108
@@ -56,28 +62,36 @@ class Project(object):
     def name(self):
         return self.url.split('/')[-1]
 
-    def download(self, path='.', extract_archives=True):
-        download_url = '%s?download=true' % self.url
-        try:
-            response = requests.get(download_url)
-        except requests.exceptions.ConnectionError:
-            return False
+    def download(self, path='.'):
+        metadata = self.get_metadata()
+        if metadata is None:
+            return None
+
+        response = http_get(self.url + '?download=true')
+        if response is None:
+            return None
+
+        path = os.path.join(path, self.name)
+        mkdir_p(path)
         download_filename = response.url.split('/')[-1]
-        if extract_archives and download_filename.endswith('.zip'):
+        if download_filename.endswith('.zip'):
             try:
                 with zipfile.ZipFile(cStringIO.StringIO(response.content)) as f:
                     extractall(f, path)
             except zipfile.BadZipfile:
-                return False
+                return None
         else:
             with open(os.path.join(path, download_filename), 'w') as f:
                 f.write(response.text.encode('utf-8'))
-        return True
+        return dict(name=self.name, url=self.url, **metadata)
 
     def get_metadata(self):
-        metadata = {}
-        soup = get_soup(self.url)
+        response = http_get(self.url)
+        if response is None:
+            return None
+        soup = bs4.BeautifulSoup(response.text)
 
+        metadata = {}
         tags_div = soup.find('div', id='all_tags')
         raw_tags = tags_div.get_text().strip().split('\n\n')[0].split(', ')
         tags = []
@@ -104,17 +118,25 @@ class Project(object):
             metadata['date_updated'] = date_span.text[len('(Updated '):-1]
         return metadata
 
-    def get_json(self):
-        return dict(name=self.name, url=self.url, **self.get_metadata())
 
-
-def fileindex_projects(num_projects, sort):
+def download_projects(dest_dir, num_projects, sort):
     def helper():
         for page in itertools.count(1):
             params = dict(page=page, term='type:Function', sort=sort)
-            soup = get_soup(BASE_URL, params=params)
+            response = http_get(BASE_URL, params=params)
+            if response is None:
+                continue
+            soup = bs4.BeautifulSoup(response.text)
             for title in soup.find_all('p', attrs={'class': 'file_title'}):
-                yield Project(title.a['href'])
+                project = Project(title.a['href'])
+                print 'Downloading %s...' % project.name,
+                sys.stdout.flush()
+                project_json = project.download(dest_dir)
+                if project_json is None:
+                    print 'failed.'
+                else:
+                    print 'done.'
+                    yield project_json
     return itertools.islice(helper(), num_projects)
 
 
@@ -124,9 +146,6 @@ def parse_args():
     parser.add_argument(
         '--num_projects', default=10, type=int,
         help='Number of projects to fetch.')
-    parser.add_argument(
-        '--extract_archives', type=bool, default=True,
-        help='If true, automatically extract archives.')
     SORT_CHOICES = ('downloads_desc', 'downloads_asc',
                     'date_desc_updated', 'date_asc_updated',
                     'date_desc_submitted', 'date_asc_submitted',
@@ -141,23 +160,9 @@ def parse_args():
     return parser.parse_args()
 
 
-@contextlib.contextmanager
-def status(message):
-    print '%s...' % message,
-    sys.stdout.flush()
-    yield
-    print 'done.'
-
-
 def main():
     args = parse_args()
-    projects = []
-    for project in fileindex_projects(args.num_projects, args.sort):
-        download_path = os.path.join(args.to, project.name)
-        os.makedirs(download_path)
-        with status('Downloading %s' % project.name):
-            if project.download(download_path, args.extract_archives):
-                projects.append(project.get_json())
+    projects = list(download_projects(args.to, args.num_projects, args.sort))
     with open(os.path.join(args.to, 'manifest.json'), 'w') as f:
         json.dump({'projects': projects}, f, indent=2, sort_keys=True)
 
