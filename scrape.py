@@ -58,7 +58,10 @@ class Project(object):
 
     def download(self, path='.', extract_archives=True):
         download_url = '%s?download=true' % self.url
-        response = requests.get(download_url)
+        try:
+            response = requests.get(download_url)
+        except requests.exceptions.ConnectionError:
+            return False
         download_filename = response.url.split('/')[-1]
         if extract_archives and download_filename.endswith('.zip'):
             try:
