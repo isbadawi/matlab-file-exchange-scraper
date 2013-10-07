@@ -64,7 +64,7 @@ class Project(object):
             try:
                 with zipfile.ZipFile(cStringIO.StringIO(response.content)) as f:
                     extractall(f, path)
-            except zipfile.BadZipFile:
+            except zipfile.BadZipfile:
                 return False
         else:
             with open(os.path.join(path, download_filename), 'w') as f:
