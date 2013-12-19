@@ -93,7 +93,7 @@ class Project(object):
 
         metadata = {}
         tags_div = soup.find('div', id='all_tags')
-        raw_tags = tags_div.get_text().strip().split('\n\n')[0].split(', ')
+        raw_tags = [a.get_text().strip() for a in tags_div.find_all('a')]
         tags = []
         for tag in raw_tags:
             match = TAG_REGEX.match(tag)
