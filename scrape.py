@@ -113,9 +113,9 @@ class Project(object):
         metadata['date_submitted'] = details.find(
             'span', id='submissiondate').text.strip()
         metadata['date_updated'] = metadata['date_submitted']
-        date_span = details.find('span', id='date_updated')
+        date_span = details.find('span', itemprop='datePublished')
         if date_span is not None:
-            metadata['date_updated'] = date_span.text[len('(Updated '):-1]
+            metadata['date_updated'] = date_span.text
         return metadata
 
 
